@@ -1,8 +1,93 @@
-import { Link } from 'react-router-dom';
+import { TbFidgetSpinner } from 'react-icons/tb';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
+import { useContext } from 'react';
+import { toast } from "react-hot-toast";
 import { FcGoogle } from 'react-icons/fc';
+import { AuthContext } from '../../providers/AuthProvider';
 
 const SignUp = () => {
+  const {
+    createUser,
+    updateUserProfile,
+    loading,
+    setLoading,
+    signInWithGoogle,
+  } = useContext(AuthContext);
+  const navigate = useNavigate();  
+  const location = useLocation();
+  
+  const from = location.state?.from?.pathname || '/';
+
+  const handleGoogleSignIn = () => {
+    signInWithGoogle()
+      .then((result) => {
+        console.log(result.user)
+        navigate(from, { replace: true });
+      })
+      .catch((err) => {
+        setLoading(false);
+        console.log(err.message)
+        toast.error(err.message);
+      })
+  }
+  const signUpWithPass = event => {
+    event.preventDefault();
+    const form = event.target;
+    const name = form.name.value;
+    const email = form.email.value;
+    const password = form.password.value;
+    
+
+    // Image
+    const image = form.image.files[0];
+    const formData = new FormData();
+    formData.append('image', image);
+    const url = `https://api.imgbb.com/1/upload?key=${
+      import.meta.env.VITE_IMGBB_KEY
+    }`;
+    console.log(url)
+    // Post Image
+    fetch(url,{
+      method: 'POST',
+      body: formData,
+    })
+    .then(res => res.json())
+    .then(imageData => {
+      // console.log(imageData)
+      const imageUrl = imageData.data.display_url;
+
+      console.log(imageUrl);
+      // Create user
+      createUser(email, password)
+        .then(() => {
+          // console.log(result)
+          // update Profile with image and name
+          updateUserProfile(imageUrl, name)
+            .then(() => {
+              toast.success('User created successfully')
+              navigate(from, {replace: true})
+            })
+            .catch((err) => {
+              console.log(err.message);
+              toast.error(err.message);
+            })
+        })
+        .catch((err) => {
+          setLoading(false);
+          console.log(err.message);
+          toast.error(err.message);
+        })
+    })
+    .catch(err => {
+      setLoading(false)
+      console.log(err.message)
+      toast.error(err.message)
+    })
+
+    return
+  }
+
   return (
     <div className="flex justify-center items-center min-h-screen">
       <div className="flex flex-col max-w-md p-6 rounded-md sm:p-10 bg-gray-100 text-gray-900">
@@ -14,6 +99,7 @@ const SignUp = () => {
           noValidate=""
           action=""
           className="space-y-6 ng-untouched ng-pristine ng-valid"
+          onSubmit={signUpWithPass}
         >
           <div className="space-y-4">
             <div>
@@ -34,7 +120,7 @@ const SignUp = () => {
                 Select Image:
               </label>
               <input
-                required
+                // required
                 type="file"
                 id="image"
                 name="image"
@@ -77,7 +163,14 @@ const SignUp = () => {
               type="submit"
               className="bg-rose-500 w-full rounded-md py-3 text-white"
             >
-              Continue
+              {loading ? (
+                <TbFidgetSpinner
+                  className="animate-spin m-auto"
+                  size={24}
+                ></TbFidgetSpinner>
+              ) : (
+                'Continue'
+              )}
             </button>
           </div>
         </form>
@@ -88,7 +181,10 @@ const SignUp = () => {
           </p>
           <div className="flex-1 h-px sm:w-16 dark:bg-gray-700"></div>
         </div>
-        <div className="flex justify-center items-center space-x-2 border m-3 p-2 border-gray-300 border-rounded cursor-pointer">
+        <div
+          className="flex justify-center items-center space-x-2 border m-3 p-2 border-gray-300 border-rounded cursor-pointer"
+          onClick={handleGoogleSignIn}
+        >
           <FcGoogle size={32} />
 
           <p>Continue with Google</p>
@@ -101,7 +197,6 @@ const SignUp = () => {
           >
             Login
           </Link>
-          .
         </p>
       </div>
     </div>
